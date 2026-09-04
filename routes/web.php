@@ -15,11 +15,12 @@ Route::get('/health', function () {
     try {
         DB::connection()->getPdo();
         $dbStatus = 'ok';
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         $dbStatus = 'error';
     }
     $status = $dbStatus === 'ok' ? 'ok' : 'degraded';
     $httpCode = $status === 'ok' ? 200 : 503;
+
     return response()->json([
         'status' => $status,
         'database' => $dbStatus,
