@@ -1,4 +1,6 @@
 FROM php:8.4-fpm
+RUN usermod-u 1002 www-data
+RUN groupmod-g 1002 www-data
 # Dépendances système
 RUN apt-get update && apt-get install -y unzip libzip-dev && rm -rf /var/lib/apt/lists/*
 # Extensions PHP

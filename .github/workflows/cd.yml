@@ -1,0 +1,38 @@
+name: CD Staging
+
+on:
+  workflow_run:
+    workflows: [ "CI Laravel" ]
+    types: [ completed ]
+    branches: [ main ]
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    environment: staging
+    steps:
+      - name: Configurer la clé SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Déployer sur le VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
+            cd /home/deploy/${{ secrets.EQUIPE_NOM }} &&
+            git fetch origin &&
+            git reset --hard origin/main &&
+            docker compose down &&
+            docker compose up -d --build &&
+            sleep 5 &&
+            docker compose exec -T app composer install --no-interaction --prefer-dist &&
+            docker compose exec -T app php artisan migrate --force &&
+            docker compose exec -T app php artisan optimize:clear
+          "
+      - name: Smoke test
+        run: |
+          sleep 5 # laisser le temps à l'app de redémarrer
+          curl -f http://${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PORT }}/health || exit 1
