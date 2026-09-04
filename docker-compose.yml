@@ -3,6 +3,9 @@ services:
         build: # utiliser le dockerfile
             context: .
             dockerfile: docker/Dockerfile
+            args:
+                WWWUSER: ${WWWUSER:-1000}
+                WWWGROUP: ${WWWGROUP:-1000}
         volumes:
             - .:/var/www/html # code source monté
             - ./docker/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
