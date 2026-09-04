@@ -19,6 +19,24 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan ${{ secrets.DEPLOY_HOST }} >> ~/.ssh/known_hosts
 
+      # - name: Déployer sur le VPS
+      #   run: |
+      #     ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
+      #       cd /home/deploy/${{ secrets.EQUIPE_NOM }} &&
+      #       git fetch origin &&
+      #       git reset --hard origin/main &&
+      #       docker compose down &&
+      #       docker compose up -d --build &&
+      #       sleep 5 &&
+      #       docker compose exec -T app composer install --no-interaction --prefer-dist &&
+      #       docker compose exec -T app php artisan migrate --force &&
+      #       docker compose exec -T app php artisan optimize:clear
+      #     "
+      # - name: Smoke test
+      #   run: |
+      #     sleep 5 # laisser le temps à l'app de redémarrer
+      #     curl -f http://${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PORT }}/health || exit 1
+
       - name: Déployer sur le VPS
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
@@ -32,7 +50,16 @@ jobs:
             docker compose exec -T app php artisan migrate --force &&
             docker compose exec -T app php artisan optimize:clear
           "
+
       - name: Smoke test
         run: |
-          sleep 5 # laisser le temps à l'app de redémarrer
-          curl -f http://${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PORT }}/health || exit 1
+          sleep 5
+          # Add verbose output to see the actual error
+          curl -v http://${{ secrets.DEPLOY_HOST }}:${{ secrets.DEPLOY_PORT }}/health || {
+            echo "Health check failed. Checking app logs..."
+            ssh -i ~/.ssh/deploy_key ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "
+              cd /home/deploy/${{ secrets.EQUIPE_NOM }} &&
+              docker compose logs app
+            "
+            exit 1
+          }
