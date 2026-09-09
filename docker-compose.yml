@@ -43,6 +43,8 @@ services:
         entrypoint: ["tail", "-f", "/dev/null"]
         networks:
             - laravel
+        environment:
+            GITHUB_TOKEN: ${GITHUB_TOKEN}
 
 volumes:
     mysql_data: # volume nommé déclaré ici
