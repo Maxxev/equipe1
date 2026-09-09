@@ -35,6 +35,19 @@ services:
             - mysql_data:/var/lib/mysql # volume nommé pour persister les données
         networks:
             - laravel
+    node:
+        build:
+            context: .
+            dockerfile: docker/node/Dockerfile
+        working_dir: /app
+        volumes:
+            - .:/app
+            - ~/.ssh:/root/.ssh:ro
+        entrypoint: ["tail", "-f", "/dev/null"]
+        networks:
+            - laravel
+        environment:
+            GITHUB_TOKEN: ${GITHUB_TOKEN}
 
 volumes:
     mysql_data: # volume nommé déclaré ici
