@@ -15,7 +15,10 @@ jobs:
         with:
           node-version: 22
 
-      - run: npm ci
+      - run: npm ci # installe les dépendances, mais fail si le package-lock.json ne colle pas avec le package.json
+      - run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
       - run: npx release-it --ci
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
