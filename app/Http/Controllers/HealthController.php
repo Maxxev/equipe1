@@ -25,28 +25,32 @@ class HealthController extends Controller
     {
         $checks = [
             'database' => $this->verifierBaseDeDonnees(),
-            'cache'    => $this->verifierCache(),
-            'storage'  => $this->verifierStockage(),
+            'cache' => $this->verifierCache(),
+            'storage' => $this->verifierStockage(),
         ];
 
         // L'application est saine si AUCUNE vérification n'est en échec.
         $saine = ! in_array('error', array_column($checks, 'status'), true);
 
         return response()->json([
-            'status'      => $saine ? 'ok' : 'error',
+            'status' => $saine ? 'ok' : 'error',
             'application' => config('app.name'),
             'environment' => config('app.env'),
             // Le SHA du commit déployé : écrit par scripts/deploy.sh.
             // C'est ce qui permet au smoke test de vérifier que c'est bien
             // LE commit qu'on vient de merger qui est en ligne.
-            'version'     => $this->versionDeployee(),
+            'version' => $this->versionDeployee(),
             'deployed_at' => $this->dateDeDeploiement(),
-            'checks'      => $checks,
-            'timestamp'   => now()->toIso8601String(),
+            'checks' => $checks,
+            'timestamp' => now()->toIso8601String(),
         ], $saine ? 200 : 503);
     }
 
-    /** Une requête triviale qui prouve que la connexion et les identifiants sont bons. */
+    /**
+     * Une requête triviale qui prouve que la connexion et les identifiants sont bons.
+     *
+     * @return array{status: string, latency_ms: float}
+     */
     private function verifierBaseDeDonnees(): array
     {
         $debut = microtime(true);
@@ -66,7 +70,11 @@ class HealthController extends Controller
         }
     }
 
-    /** Écrit puis relit une clé : prouve que Redis (ou le driver choisi) répond. */
+    /**
+     * Écrit puis relit une clé : prouve que Redis (ou le driver choisi) répond.
+     *
+     * @return array{status: string, latency_ms: float}
+     */
     private function verifierCache(): array
     {
         $debut = microtime(true);
@@ -85,7 +93,11 @@ class HealthController extends Controller
         }
     }
 
-    /** Vérifie que storage/ est bien accessible en écriture (erreur de permissions n°1). */
+    /**
+     * Vérifie que storage/ est bien accessible en écriture (erreur de permissions n°1).
+     *
+     * @return array{status: string, latency_ms: float}
+     */
     private function verifierStockage(): array
     {
         $debut = microtime(true);

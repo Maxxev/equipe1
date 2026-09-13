@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\CalculateurController;
+use App\Http\Controllers\HealthController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\HealthController;
 
 Route::get('/', function () {
     return view('welcome');
