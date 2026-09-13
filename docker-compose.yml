@@ -15,7 +15,7 @@ services:
     nginx:
         image: nginx:alpine
         ports:
-            - "8001:80" # port hÃ´te:port conteneur
+            - "127.0.0.1:8001:80" # port hôte:port conteneur — localhost seulement (voir docker-compose.staging.yml)
         volumes:
             - .:/var/www/html
             - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf

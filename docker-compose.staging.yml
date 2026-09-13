@@ -1,0 +1,42 @@
+# docker-compose.staging.yml — overlay de staging pour docker-compose.yml
+#
+# Ne redéfinit QUE ce qui doit changer par rapport au setup de développement :
+# pas de Xdebug, port nginx restreint à 127.0.0.1, redémarrage automatique
+# après un reboot, healthcheck sur mysql. Tout le reste (Dockerfile, réseau,
+# nom des services, DB_HOST=mysql déjà cohérent) reste identique.
+#
+# Le service "node" (outil de dev, GITHUB_TOKEN monté) n'est jamais démarré
+# en staging : on ne le liste pas dans les commandes `up`/`build`, il reste
+# défini mais inactif. On continue de l'utiliser ponctuellement, via
+# `docker compose run --rm`, pour compiler les assets pendant le déploiement
+# (voir scripts/deploy-docker.sh).
+#
+# Usage :
+#   docker compose -f docker-compose.yml -f docker-compose.staging.yml \
+#     up -d --build app nginx mysql
+
+services:
+    app:
+        restart: unless-stopped
+        # On réécrit la liste complète des volumes : docker compose ne
+        # fusionne pas les listes entre fichiers, il les remplace. On garde
+        # le bind-mount du code, on retire le montage de xdebug.ini.
+        volumes:
+            - .:/var/www/html
+
+    nginx:
+        restart: unless-stopped
+        # Le port 127.0.0.1:8001 est déjà défini dans docker-compose.yml (base) :
+        # on ne le répète pas ici. Attention : contrairement à `volumes:`,
+        # Docker Compose FUSIONNE (n'écrase pas) les listes `ports:` entre
+        # fichiers — redéclarer un port ici l'ajouterait en double et ferait
+        # échouer le démarrage ("address already in use").
+
+    mysql:
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD}"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+            start_period: 30s
