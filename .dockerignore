@@ -1,0 +1,21 @@
+# .dockerignore — réduit le contexte envoyé au démon Docker à chaque build.
+#
+# Notre Dockerfile ne fait pas de `COPY . .` (le code arrive par bind-mount,
+# voir docker-compose.yml), donc ce fichier ne change rien au contenu de
+# l'image. Il évite seulement d'envoyer vendor/, node_modules/ et .git/
+# (plusieurs centaines de Mo) au démon à chaque `docker compose build`.
+
+.git
+.github
+node_modules
+vendor
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+public/build
+public/storage
+.env
+.env.*
+!.env.example
+tests
