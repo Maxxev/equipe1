@@ -131,4 +131,70 @@ class CalculateurControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertJson(['prix_remise' => 0]);
     }
+
+    // —— Tests respecteSeuilMinimum —————————————————————————————————————————————————————————————
+
+    public function test_seuil_minimum_retourne_vrai_quand_le_prix_atteint_le_seuil(): void
+    {
+        $response = $this->postJson('/api/calculateur/respecte-seuil-minimum', [
+            'prix' => 100,
+            'seuil_minimum' => 50,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['respecte_seuil_minimum' => true]);
+    }
+
+    public function test_seuil_minimum_retourne_faux_quand_le_prix_est_sous_le_seuil(): void
+    {
+        $response = $this->postJson('/api/calculateur/respecte-seuil-minimum', [
+            'prix' => 25,
+            'seuil_minimum' => 50,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson(['respecte_seuil_minimum' => false]);
+    }
+
+    public function test_seuil_minimum_necessite_prix(): void
+    {
+        $response = $this->postJson('/api/calculateur/respecte-seuil-minimum', [
+            'seuil_minimum' => 50,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('prix');
+    }
+
+    public function test_seuil_minimum_necessite_seuil(): void
+    {
+        $response = $this->postJson('/api/calculateur/respecte-seuil-minimum', [
+            'prix' => 100,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('seuil_minimum');
+    }
+
+    public function test_seuil_minimum_avec_prix_negatif_retourne_erreur_metier(): void
+    {
+        $response = $this->postJson('/api/calculateur/respecte-seuil-minimum', [
+            'prix' => -10,
+            'seuil_minimum' => 50,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson(['message' => 'Le prix ne peut pas être négatif.']);
+    }
+
+    public function test_seuil_minimum_avec_seuil_negatif_retourne_erreur_metier(): void
+    {
+        $response = $this->postJson('/api/calculateur/respecte-seuil-minimum', [
+            'prix' => 100,
+            'seuil_minimum' => -50,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson(['message' => 'Le seuil minimum ne peut pas être négatif.']);
+    }
 }
