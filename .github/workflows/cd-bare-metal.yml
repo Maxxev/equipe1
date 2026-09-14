@@ -48,13 +48,15 @@ jobs:
         run: |
           # head_sha, pas github.sha : en contexte workflow_run, github.sha
           # ne pointe pas forcément vers le commit qui a déclenché "CI Laravel".
+          # Fallback sur github.sha pour le déclencheur push (temporaire), qui
+          # n'a pas de contexte workflow_run.
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "cd ${{ vars.APP_DIR }} && ./scripts/deploy.sh ${{ github.event.workflow_run.head_sha }}"
+            "cd ${{ vars.APP_DIR }} && ./scripts/deploy.sh ${{ github.event.workflow_run.head_sha || github.sha }}"
 
       - name: Smoke test - la route /health
         env:
-          SHA_ATTENDU: ${{ github.event.workflow_run.head_sha }}
+          SHA_ATTENDU: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -uo pipefail
           URL="${{ vars.APP_URL }}/health"
@@ -110,11 +112,11 @@ jobs:
       - name: Résumé du déploiement
         if: always()
         env:
-          MESSAGE_COMMIT: ${{ github.event.workflow_run.head_commit.message }}
-          AUTEUR: ${{ github.event.workflow_run.actor.login }}
+          MESSAGE_COMMIT: ${{ github.event.workflow_run.head_commit.message || github.event.head_commit.message }}
+          AUTEUR: ${{ github.event.workflow_run.actor.login || github.actor }}
           URL_APP: ${{ vars.APP_URL }}
           RESULTAT: ${{ job.status }}
-          SHA: ${{ github.event.workflow_run.head_sha }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           {
             echo "### Déploiement staging (bare metal)"

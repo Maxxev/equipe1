@@ -48,13 +48,15 @@ jobs:
           # SSH_USER vaut déjà "deploy" : pas de "sudo -u deploy" ici,
           # contrairement aux commandes tapées à la main en tant qu'azureuser.
           # scripts/deploy-docker.sh gère lui-même les `-f docker-compose.yml -f docker-compose.staging.yml` en interne.
+          # Fallback sur github.sha pour le déclencheur push (temporaire), qui
+          # n'a pas de contexte workflow_run.
           ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes \
             "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "cd ${{ vars.APP_DIR_DOCKER }} && ./scripts/deploy-docker.sh ${{ github.event.workflow_run.head_sha }}"
+            "cd ${{ vars.APP_DIR_DOCKER }} && ./scripts/deploy-docker.sh ${{ github.event.workflow_run.head_sha || github.sha }}"
 
       - name: Smoke test - la route /health (Docker)
         env:
-          SHA_ATTENDU: ${{ github.event.workflow_run.head_sha }}
+          SHA_ATTENDU: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -uo pipefail
           URL="${{ vars.APP_URL_DOCKER }}/health"
@@ -112,11 +114,11 @@ jobs:
       - name: Résumé du déploiement (Docker)
         if: always()
         env:
-          MESSAGE_COMMIT: ${{ github.event.workflow_run.head_commit.message }}
-          AUTEUR: ${{ github.event.workflow_run.actor.login }}
+          MESSAGE_COMMIT: ${{ github.event.workflow_run.head_commit.message || github.event.head_commit.message }}
+          AUTEUR: ${{ github.event.workflow_run.actor.login || github.actor }}
           URL_APP: ${{ vars.APP_URL_DOCKER }}
           RESULTAT: ${{ job.status }}
-          SHA: ${{ github.event.workflow_run.head_sha }}
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           {
             echo "### Déploiement staging (Docker)"
