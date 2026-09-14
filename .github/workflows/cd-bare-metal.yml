@@ -4,7 +4,9 @@ on:
   workflow_run:
     workflows: ["CI Laravel"]
     types: [completed]
-    branches: [main]
+    branches: [main, 33-tester-le-deploiement-continu] # TEMPORAIRE - ajout de la branche de test
+  push: # TEMPORAIRE - permet de tester sans attendre
+    branches: [33-tester-le-deploiement-continu] # que le fichier soit sur main
 
 jobs:
   deploy:

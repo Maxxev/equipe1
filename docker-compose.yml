@@ -35,6 +35,19 @@ services:
             - mysql_data:/var/lib/mysql # volume nommé pour persister les données
         networks:
             - laravel
+    phpmyadmin:
+        image: phpmyadmin:latest
+        environment:
+            PMA_HOST: mysql
+            PMA_USER: ${DB_USERNAME}
+            PMA_PASSWORD: ${DB_PASSWORD}
+        ports:
+            - "127.0.0.1:8080:80" # localhost seulement
+        depends_on:
+            - mysql
+        networks:
+            - laravel
+
     node:
         build:
             context: .
