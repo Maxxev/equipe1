@@ -14,7 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
-    if: github.event.workflow_run.conclusion == 'success'
+    # Le déclencheur push (temporaire) n'a pas de contexte workflow_run,
+    # donc on ne vérifie sa conclusion que lorsque l'événement est workflow_run.
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
 
     # Groupe différent de celui de cd-bare-metal.yml : les deux variantes ne
     # se bloquent jamais entre elles.

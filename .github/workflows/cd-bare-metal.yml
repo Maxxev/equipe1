@@ -15,7 +15,9 @@ jobs:
     timeout-minutes: 15
 
     # Rôle du "needs" : on ne déploie que si CI Laravel a réussi.
-    if: github.event.workflow_run.conclusion == 'success'
+    # Le déclencheur push (temporaire) n'a pas de contexte workflow_run,
+    # donc on ne vérifie sa conclusion que lorsque l'événement est workflow_run.
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
 
     # Un seul déploiement bare metal à la fois. Groupe DIFFÉRENT de celui de
     # cd-docker.yml : les deux variantes ne se bloquent jamais entre elles.
