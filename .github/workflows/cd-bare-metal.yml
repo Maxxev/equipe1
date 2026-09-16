@@ -1,0 +1,129 @@
+name: CD Bare metal
+
+on:
+  workflow_run:
+    workflows: ["CI Laravel"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Déploiement sur le serveur de staging (bare metal)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Rôle du "needs" : on ne déploie que si CI Laravel a réussi.
+    if: github.event.workflow_run.conclusion == 'success'
+
+    # Un seul déploiement bare metal à la fois. Groupe DIFFÉRENT de celui de
+    # cd-docker.yml : les deux variantes ne se bloquent jamais entre elles.
+    concurrency:
+      group: deploy-staging-baremetal
+      cancel-in-progress: false
+
+    environment:
+      name: staging
+      url: ${{ vars.APP_URL }}
+
+    steps:
+      - name: Installer la clé SSH du robot
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Vérifier la connexion au serveur
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            'echo "Connecté sur $(hostname) en tant que $(whoami)"'
+
+      - name: Lancer le déploiement
+        run: |
+          # head_sha, pas github.sha : en contexte workflow_run, github.sha
+          # ne pointe pas forcément vers le commit qui a déclenché "CI Laravel".
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "cd ${{ vars.APP_DIR }} && ./scripts/deploy.sh ${{ github.event.workflow_run.head_sha }}"
+
+      - name: Smoke test - la route /health
+        env:
+          SHA_ATTENDU: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -uo pipefail
+          URL="${{ vars.APP_URL }}/health"
+          CODE=000
+
+          for tentative in $(seq 1 12); do
+            CODE=$(curl -sS -o health.json -w '%{http_code}' --max-time 10 "$URL" || echo 000)
+            echo "Tentative $tentative - HTTP $CODE"
+            [ "$CODE" = "200" ] && break
+            sleep 5
+          done
+
+          echo "--- Réponse de $URL ---"
+          cat health.json || true
+          echo
+
+          if [ "$CODE" != "200" ]; then
+            echo "::error::/health a répondu $CODE au lieu de 200"
+            exit 1
+          fi
+
+          STATUT=$(jq -r '.status' health.json)
+          if [ "$STATUT" != "ok" ]; then
+            echo "::error::/health renvoie status=$STATUT"
+            jq -r '.checks' health.json
+            exit 1
+          fi
+
+          EN_LIGNE=$(jq -r '.version' health.json)
+          if [ "$EN_LIGNE" != "$SHA_ATTENDU" ]; then
+            echo "::error::Version en ligne = $EN_LIGNE, attendue = $SHA_ATTENDU"
+            exit 1
+          fi
+
+          echo "Smoke test réussi - commit ${SHA_ATTENDU:0:8} confirmé en ligne."
+
+      - name: Smoke test - la page d'accueil et la redirection HTTPS
+        run: |
+          set -uo pipefail
+          BASE="${{ vars.APP_URL }}"
+
+          CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "$BASE/")
+          echo "GET $BASE/ -> $CODE"
+          [ "$CODE" = "200" ] || { echo "::error::Accueil HTTP $CODE"; exit 1; }
+
+          REDIR=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "${BASE/https:/http:}/")
+          echo "GET en clair -> $REDIR"
+          case "$REDIR" in
+            301|308) echo "Redirection HTTP -> HTTPS confirmée" ;;
+            *) echo "::warning::Redirection inattendue : $REDIR" ;;
+          esac
+
+      - name: Résumé du déploiement
+        if: always()
+        env:
+          MESSAGE_COMMIT: ${{ github.event.workflow_run.head_commit.message }}
+          AUTEUR: ${{ github.event.workflow_run.actor.login }}
+          URL_APP: ${{ vars.APP_URL }}
+          RESULTAT: ${{ job.status }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          {
+            echo "### Déploiement staging (bare metal)"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Commit | \`${SHA:0:8}\` |"
+            echo "| Message | ${MESSAGE_COMMIT%%$'\n'*} |"
+            echo "| Auteur | $AUTEUR |"
+            echo "| URL | $URL_APP |"
+            echo "| Résultat | $RESULTAT |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Effacer la clé SSH du runner
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519
