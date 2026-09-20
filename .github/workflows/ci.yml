@@ -60,6 +60,17 @@ jobs:
       - name: Installer les dépendances
         run: composer install --no-interaction --prefer-dist
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Installer les dépendances Node
+        run: npm ci
+
+      - name: Builder les assets frontend
+        run: npm run build
+
       - name: Préparer le .env de test
         run: |
           cp .env.example .env.testing
