@@ -2,13 +2,17 @@ import { useState } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
+import IconButton from '@mui/material/IconButton';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import Toolbar from '@mui/material/Toolbar';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import SpeedIcon from '@mui/icons-material/Speed';
 import ThermostatIcon from '@mui/icons-material/Thermostat';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
 
 import ConverterCard from './components/ConverterCard';
 
@@ -42,17 +46,23 @@ const CONVERTISSEURS = [
     },
 ];
 
-export default function App() {
+export default function App({ mode, onToggleMode }) {
     const [onglet, setOnglet] = useState(0);
     const convertisseur = CONVERTISSEURS[onglet];
+    const libelleMode = mode === 'dark' ? 'Passer au mode clair' : 'Passer au mode sombre';
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             <AppBar position="static" elevation={0}>
                 <Toolbar>
-                    <Typography variant="h6" component="h1" sx={{ color: 'common.white', fontWeight: 700 }}>
+                    <Typography variant="h6" component="h1" sx={{ color: 'common.white', fontWeight: 700, flexGrow: 1 }}>
                         Convertisseur d'unités
                     </Typography>
+                    <Tooltip title={libelleMode}>
+                        <IconButton color="inherit" onClick={onToggleMode} aria-label={libelleMode} sx={{ color: 'common.white' }}>
+                            {mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+                        </IconButton>
+                    </Tooltip>
                 </Toolbar>
             </AppBar>
 
